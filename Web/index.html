@@ -1,0 +1,3343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DECKER — Decrypt The Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css">
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
+
+<style>
+  /* =============================================
+     DESIGN TOKENS — CYBERPUNK INDUSTRIAL SYSTEM
+     ============================================= */
+  :root {
+    --bg-void:        #0A0A0A;
+    --bg-surface:     #0F0F0F;
+    --bg-elevated:    #141414;
+    --bg-panel:       #111418;
+
+    --cyan:           #00FFFF;
+    --cyan-dim:       #00CCCC;
+    --cyan-ghost:     rgba(0,255,255,0.08);
+    --cyan-border:    rgba(0,255,255,0.25);
+    --cyan-glow:      0 0 8px rgba(0,255,255,0.6), 0 0 24px rgba(0,255,255,0.2);
+    --cyan-glow-sm:   0 0 6px rgba(0,255,255,0.5);
+
+    --magenta:        #FF00FF;
+    --magenta-dim:    #CC00CC;
+    --magenta-ghost:  rgba(255,0,255,0.08);
+    --magenta-border: rgba(255,0,255,0.3);
+    --magenta-glow:   0 0 8px rgba(255,0,255,0.7), 0 0 24px rgba(255,0,255,0.25);
+
+    --text-primary:   #E8F4F4;
+    --text-secondary: #8AACAC;
+    --text-muted:     #4A6A6A;
+    --text-code:      #00FFFF;
+
+    --border-subtle:  rgba(0,255,255,0.12);
+    --border-mid:     rgba(0,255,255,0.22);
+
+    --font-head:      'Orbitron', sans-serif;
+    --font-body:      'Roboto Mono', monospace;
+
+    --radius-sm:      2px;
+    --radius-md:      4px;
+    --radius-lg:      6px;
+
+    --transition:     0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  html { font-size: 14px; }
+
+  /* =============================================
+     RESET + GLOBAL
+     ============================================= */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Scanline overlay — ambient texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,255,0.012) 2px,
+      rgba(0,255,255,0.012) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Noise vignette */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  /* =============================================
+     TYPOGRAPHY ATOMS
+     ============================================= */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-head);
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+  }
+
+  .txt-cyan   { color: var(--cyan); }
+  .txt-magenta{ color: var(--magenta); }
+  .txt-muted  { color: var(--text-secondary); }
+  .txt-code   { font-family: var(--font-body); }
+
+  .label-tag {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid var(--cyan-border);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--cyan-ghost);
+  }
+  .label-tag.magenta {
+    color: var(--magenta);
+    border-color: var(--magenta-border);
+    background: var(--magenta-ghost);
+  }
+
+  /* =============================================
+     BUTTON ATOMS
+     ============================================= */
+  .btn-neon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 20px;
+    font-family: var(--font-head);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--bg-void) !important;
+    background: var(--cyan);
+    border: 2px solid var(--cyan);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--cyan-glow);
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .btn-neon { min-height: 48px; padding: 0 28px; font-size: 13px; letter-spacing: 0.12em; }
+  }
+  .btn-neon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+  .btn-neon:hover::before { transform: translateX(100%); }
+  .btn-neon:hover {
+    background: #00E5E5;
+    border-color: #00E5E5;
+    box-shadow: 0 0 14px rgba(0,255,255,0.9), 0 0 40px rgba(0,255,255,0.35);
+    transform: translateY(-1px);
+  }
+  .btn-neon:active { transform: translateY(0); }
+
+  .btn-neon-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-family: var(--font-head);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--cyan) !important;
+    background: transparent;
+    border: 1px solid var(--cyan-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .btn-neon-outline { min-height: 44px; padding: 0 20px; font-size: 11px; letter-spacing: 0.14em; }
+  }
+  .btn-neon-outline:hover {
+    background: var(--cyan-ghost);
+    border-color: var(--cyan);
+    box-shadow: var(--cyan-glow-sm);
+  }
+
+  .btn-neon-lg {
+    min-height: 50px;
+    padding: 0 28px;
+    font-size: 13px;
+    border-radius: var(--radius-md);
+  }
+  @media (min-width: 640px) {
+    .btn-neon-lg { min-height: 58px; padding: 0 44px; font-size: 15px; }
+  }
+
+  /* =============================================
+     NAVBAR
+     ============================================= */
+  .dkr-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 16px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .dkr-nav { padding: 0 24px; height: 64px; }
+  }
+
+  .dkr-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+
+  .dkr-logo-icon {
+    width: 36px;
+    height: 36px;
+    position: relative;
+  }
+
+  .dkr-logo-text {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 0.15em;
+    text-shadow: var(--cyan-glow-sm);
+    text-decoration: none;
+  }
+  @media (min-width: 640px) {
+    .dkr-logo-text { font-size: 20px; letter-spacing: 0.2em; }
+  }
+
+  .dkr-logo-text span {
+    color: var(--text-secondary);
+    font-size: 8px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    display: block;
+    line-height: 1;
+    margin-top: 1px;
+  }
+  @media (min-width: 640px) {
+    .dkr-logo-text span { font-size: 10px; letter-spacing: 0.1em; }
+  }
+
+  .nav-status {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+  .nav-status::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: var(--cyan-glow-sm);
+    animation: pulse 2s infinite;
+  }
+
+  @media (min-width: 640px) { .nav-status { display: flex; } }
+
+  /* =============================================
+     HERO SECTION
+     ============================================= */
+  .hero-section {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 16px 72px;
+    position: relative;
+    text-align: center;
+    overflow: hidden;
+  }
+  @media (min-width: 640px) {
+    .hero-section { padding: 100px 24px 80px; }
+  }
+
+  /* Circuit grid background */
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Central glow */
+  .hero-section::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(0,255,255,0.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    margin-bottom: 24px;
+    animation: fadeInDown 0.6s ease both;
+  }
+
+  .hero-title {
+    font-family: var(--font-head);
+    font-size: clamp(28px, 9vw, 72px);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.08;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    animation: fadeInDown 0.6s 0.1s ease both;
+    position: relative;
+    z-index: 1;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  @media (min-width: 480px) {
+    .hero-title { letter-spacing: 0.06em; line-height: 1.05; }
+  }
+
+  .hero-title .accent {
+    color: var(--cyan);
+    text-shadow: var(--cyan-glow);
+    display: block;
+  }
+
+  .hero-subtitle {
+    font-family: var(--font-body);
+    font-size: clamp(13px, 2vw, 16px);
+    color: var(--text-secondary);
+    max-width: 560px;
+    margin: 0 auto 40px;
+    line-height: 1.8;
+    animation: fadeInDown 0.6s 0.2s ease both;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-subtitle strong {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .hero-cta-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: fadeInDown 0.6s 0.3s ease both;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (min-width: 480px) {
+    .hero-cta-group { flex-direction: row; justify-content: center; }
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 20px;
+    margin-top: 24px;
+    animation: fadeInDown 0.6s 0.45s ease both;
+    position: relative;
+    z-index: 1;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  @media (min-width: 640px) {
+    .hero-stats { gap: 32px; margin-top: 60px; }
+  }
+
+  .hero-stat {
+    text-align: center;
+  }
+
+  .hero-stat-number {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cyan);
+    display: block;
+    text-shadow: var(--cyan-glow-sm);
+  }
+  @media (min-width: 640px) {
+    .hero-stat-number { font-size: 28px; }
+  }
+
+  .hero-stat-label {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Scroll indicator */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    animation: float 2s ease-in-out infinite;
+    z-index: 2;
+  }
+  @media (min-width: 640px) {
+    .scroll-indicator { bottom: 24px; gap: 6px; font-size: 10px; letter-spacing: 0.15em; }
+  }
+
+  .scroll-arrow {
+    width: 14px;
+    height: 14px;
+    border-right: 1px solid var(--cyan-dim);
+    border-bottom: 1px solid var(--cyan-dim);
+    transform: rotate(45deg);
+    opacity: 0.5;
+  }
+  @media (min-width: 640px) {
+    .scroll-arrow { width: 20px; height: 20px; }
+  }
+
+  /* =============================================
+     SECTION SKELETON
+     ============================================= */
+  .section {
+    padding: 48px 16px;
+    position: relative;
+  }
+  @media (min-width: 640px) {
+    .section { padding: 64px 24px; }
+  }
+  @media (min-width: 960px) {
+    .section { padding: 80px 24px; }
+  }
+
+  .section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    margin-bottom: 36px;
+    text-align: center;
+  }
+  @media (min-width: 640px) {
+    .section-header { margin-bottom: 48px; }
+  }
+  @media (min-width: 960px) {
+    .section-header { margin-bottom: 56px; }
+  }
+
+  .section-header .label-tag {
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: var(--font-head);
+    font-size: clamp(20px, 5vw, 38px);
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+  }
+  @media (min-width: 640px) {
+    .section-title { letter-spacing: 0.05em; }
+  }
+
+  .section-desc {
+    margin-top: 12px;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 13px;
+    line-height: 1.75;
+    padding: 0 8px;
+  }
+  @media (min-width: 640px) {
+    .section-desc { font-size: 14px; line-height: 1.8; padding: 0; }
+  }
+
+  /* Separator line */
+  .sep-line {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    margin: 20px auto 0;
+  }
+
+  /* =============================================
+     MECHANIC CARDS
+     ============================================= */
+  .mechs-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .mechs-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  }
+  @media (min-width: 960px) {
+    .mechs-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  }
+
+  .mech-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+    cursor: default;
+  }
+  @media (min-width: 640px) {
+    .mech-card { padding: 24px 20px; }
+  }
+  @media (min-width: 960px) {
+    .mech-card { padding: 28px 24px; }
+  }
+
+  .mech-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  /* Scan animation on hover */
+  .mech-card::after {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(0,255,255,0.03), transparent);
+    transition: top 0.6s ease;
+  }
+
+  .mech-card:hover {
+    border-color: var(--cyan-border);
+    box-shadow: 0 0 0 1px rgba(0,255,255,0.1), 0 8px 32px rgba(0,0,0,0.6);
+    transform: translateY(-3px);
+  }
+
+  .mech-card:hover::before { opacity: 1; }
+  .mech-card:hover::after  { top: 160%; }
+
+  .mech-card.featured {
+    border-color: rgba(255,0,255,0.2);
+    background: #100D10;
+  }
+
+  .mech-card.featured::before {
+    background: linear-gradient(90deg, transparent, var(--magenta), transparent);
+  }
+
+  .mech-card.featured:hover {
+    border-color: var(--magenta-border);
+    box-shadow: 0 0 0 1px rgba(255,0,255,0.1), 0 8px 32px rgba(0,0,0,0.6);
+  }
+
+  .mech-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background: var(--cyan-ghost);
+    border: 1px solid var(--cyan-border);
+    font-size: 20px;
+  }
+
+  .mech-icon.magenta {
+    background: var(--magenta-ghost);
+    border-color: var(--magenta-border);
+  }
+
+  .mech-card-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .mech-card-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  .mech-card-tag {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 12px;
+    width: 100%;
+  }
+
+  /* =============================================
+     PROFILE CARDS (Personajes)
+     ============================================= */
+  .profiles-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  @media (min-width: 640px) {
+    .profiles-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 40px; }
+  }
+  @media (min-width: 960px) {
+    .profiles-grid { gap: 20px; margin-top: 48px; }
+  }
+
+  .profile-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 24px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  @media (min-width: 640px) {
+    .profile-card { padding: 28px 22px; }
+  }
+  @media (min-width: 960px) {
+    .profile-card { padding: 32px 28px; }
+  }
+
+  .profile-card::after {
+    content: attr(data-code);
+    position: absolute;
+    bottom: 16px;
+    right: 20px;
+    font-family: var(--font-head);
+    font-size: 60px;
+    font-weight: 900;
+    color: rgba(0,255,255,0.04);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  .profile-card.right::after { color: rgba(255,0,255,0.04); }
+
+  .profile-card:hover { transform: translateY(-2px); }
+
+  .profile-name {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--cyan);
+    text-shadow: var(--cyan-glow-sm);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .profile-card.right .profile-name {
+    color: var(--magenta);
+    text-shadow: 0 0 6px rgba(255,0,255,0.5);
+  }
+
+  .profile-code {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .profile-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin-bottom: 24px;
+  }
+
+  .profile-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .profile-stat {
+    flex: 1;
+    min-width: 80px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .profile-stat-val {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cyan);
+    display: block;
+  }
+
+  .profile-card.right .profile-stat-val { color: var(--magenta); }
+
+  .profile-stat-key {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+    display: block;
+  }
+
+  /* =============================================
+     RANKING TABLE
+     ============================================= */
+  .ranking-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .terminal-header {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+
+  .terminal-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .td-red    { background: #FF5F57; }
+  .td-yellow { background: #FFBD2E; }
+  .td-green  { background: #28CA41; }
+
+  .terminal-title {
+    margin-left: auto;
+    color: var(--cyan);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .terminal-blink {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--cyan);
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
+
+  .terminal-body {
+    border: 1px solid var(--border-subtle);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .rank-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-body);
+    min-width: 560px;
+  }
+
+  .rank-table thead th {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: rgba(0,255,255,0.04);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .rank-table thead th { font-size: 10px; letter-spacing: 0.2em; padding: 14px 16px; }
+  }
+
+  .rank-table tbody tr {
+    border-bottom: 1px solid rgba(0,255,255,0.05);
+    transition: background var(--transition);
+  }
+
+  .rank-table tbody tr:last-child { border-bottom: none; }
+  .rank-table tbody tr:hover { background: rgba(0,255,255,0.04); }
+
+  .rank-table tbody td {
+    font-size: 12px;
+    padding: 10px 12px;
+    color: var(--text-secondary);
+    vertical-align: middle;
+  }
+  @media (min-width: 640px) {
+    .rank-table tbody td { font-size: 13px; padding: 14px 16px; }
+  }
+
+  .rank-pos {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    width: 40px;
+  }
+
+  .rank-pos.gold   { color: #FFD700; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
+  .rank-pos.silver { color: #C0C0C0; text-shadow: 0 0 8px rgba(192,192,192,0.4); }
+  .rank-pos.bronze { color: #CD7F32; text-shadow: 0 0 8px rgba(205,127,50,0.4); }
+  .rank-pos.other  { color: var(--text-muted); }
+
+  .rank-handle {
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: var(--text-primary) !important;
+  }
+
+  .rank-handle .prefix { color: var(--cyan); }
+
+  .rank-score {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cyan) !important;
+    text-shadow: var(--cyan-glow-sm);
+  }
+
+  .rank-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .rank-badge.deck   { background: rgba(0,255,255,0.12); color: var(--cyan); border: 1px solid var(--cyan-border); }
+  .rank-badge.rogue  { background: rgba(255,0,255,0.12); color: var(--magenta); border: 1px solid var(--magenta-border); }
+  .rank-badge.ghost  { background: rgba(255,165,0,0.12); color: #FFA500; border: 1px solid rgba(255,165,0,0.3); }
+
+  .rank-streak {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* =============================================
+     URGENCY BANNER
+     ============================================= */
+  .urgency-section {
+    padding: 0 16px 48px;
+  }
+  @media (min-width: 640px) {
+    .urgency-section { padding: 24px 64px; }
+  }
+  @media (min-width: 960px) {
+    .urgency-section { padding: 24px 80px; }
+  }
+
+  .urgency-banner {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #0D0509;
+    border: 1px solid var(--magenta-border);
+    border-radius: var(--radius-lg);
+    padding: 28px 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,0,255,0.05), inset 0 0 60px rgba(255,0,255,0.04);
+  }
+  @media (min-width: 640px) {
+    .urgency-banner { padding: 32px 24px; }
+  }
+  @media (min-width: 960px) {
+    .urgency-banner { padding: 40px 32px; }
+  }
+
+  .urgency-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--magenta), transparent);
+  }
+
+  .urgency-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .urgency-grid { grid-template-columns: 1fr auto; }
+  }
+
+  .urgency-title {
+    font-family: var(--font-head);
+    font-size: clamp(16px, 5vw, 26px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--magenta);
+    text-shadow: var(--magenta-glow);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    line-height: 1.25;
+  }
+  @media (min-width: 640px) {
+    .urgency-title { letter-spacing: 0.06em; }
+  }
+
+  .urgency-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 480px;
+  }
+
+  .counter-block {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  @media (min-width: 640px) {
+    .counter-block { gap: 12px; margin-top: 28px; }
+  }
+
+  .counter-unit {
+    background: var(--bg-elevated);
+    border: 1px solid var(--magenta-border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    text-align: center;
+    min-width: 58px;
+    box-shadow: 0 0 12px rgba(255,0,255,0.08);
+    flex: 1;
+    max-width: 80px;
+  }
+  @media (min-width: 640px) {
+    .counter-unit { padding: 14px 16px; min-width: 70px; max-width: none; flex: none; }
+  }
+
+  .counter-num {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--magenta);
+    text-shadow: var(--magenta-glow);
+    display: block;
+    line-height: 1;
+  }
+  @media (min-width: 640px) {
+    .counter-num { font-size: 28px; }
+  }
+
+  .counter-label {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+  }
+
+  .counter-sep {
+    font-family: var(--font-head);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--magenta-dim);
+    align-self: center;
+    opacity: 0.5;
+  }
+
+  .urgency-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  @media (min-width: 768px) {
+    .urgency-cta { align-items: flex-end; }
+  }
+
+  .urgency-slots {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  .urgency-slots strong {
+    color: var(--magenta);
+    font-weight: 700;
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    width: 200px;
+    height: 4px;
+    background: rgba(255,0,255,0.15);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    width: 73%;
+    background: var(--magenta);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--magenta);
+    animation: progressPulse 3s ease-in-out infinite;
+  }
+
+  /* =============================================
+     FOOTER
+     ============================================= */
+  .dkr-footer {
+    border-top: 1px solid var(--border-subtle);
+    padding: 32px 16px;
+    text-align: center;
+  }
+  @media (min-width: 640px) {
+    .dkr-footer { padding: 40px 24px; }
+  }
+
+  .footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  @media (min-width: 640px) {
+    .footer-inner {
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 20px;
+    }
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .footer-links a {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .footer-links a:hover { color: var(--cyan); }
+
+  .footer-copy {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+
+  .footer-copy span { color: var(--cyan); }
+
+  /* =============================================
+     ANIMATIONS
+     ============================================= */
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(6px); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(0,255,255,0.8); }
+    50%       { opacity: 0.5; box-shadow: 0 0 2px rgba(0,255,255,0.3); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  @keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.7; }
+  }
+
+  @keyframes scanIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* UIkit scrollspy — no overrides needed, UIkit manages opacity internally */
+
+  /* =============================================
+     UTILITIES
+     ============================================= */
+  .u-mt-8  { margin-top: 8px; }
+  .u-mt-16 { margin-top: 16px; }
+  .u-mt-32 { margin-top: 32px; }
+
+  .uk-container { max-width: 1100px; }
+
+  /* Hide on mobile, show on tablet+ */
+  .hide-sm { display: none; }
+  @media (min-width: 640px) { .hide-sm { display: table-cell; } }
+</style>
+
+<link rel="icon" type="image/png" href="logo.svg">
+
+</head>
+<body>
+<div id="site-wrapper">
+
+<!-- =============================================
+     NAVBAR
+     ============================================= -->
+<nav class="dkr-nav" role="banner" aria-label="Navegación principal">
+  <a class="dkr-logo" href="#" aria-label="Decker - Inicio">
+    <!-- Circuit Logo SVG -->
+    <img src="logo.svg" alt="Company Logo" width="50" height="50">
+    <div>
+      <span class="dkr-logo-text">DECKER<span>TACTICAL OPERATIONS v0.1-alpha</span></span>
+    </div>
+  </a>
+
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div class="nav-status" aria-hidden="true">SRV_ONLINE<span class="terminal-blink"></span></div>
+    <a href="https://github.com/igomezp2526/Decker/blob/main/Decker/out/artifacts/Decker_jar/Decker.jar" target="_blank"class="btn-neon-outline" style="min-height:44px; font-size:10px; padding:0 18px;">
+      ACCESO TERMINAL
+    </a>
+  </div>
+</nav>
+
+
+<!-- =============================================
+     HERO
+     ============================================= -->
+<section class="hero-section" id="inicio" aria-label="Sección principal">
+
+  <div class="hero-badge">
+    <span class="label-tag">// VERSIÓN ALPHA — ACCESO LIMITADO</span>
+  </div>
+
+  <h1 class="hero-title">
+    DECKER:
+    <span class="accent">DECRYPT THE BOARD</span>
+  </h1>
+
+  <p class="hero-subtitle">
+    <strong>Domina el azar. Hackea el sistema.</strong><br>
+    Multiplicadores exponenciales en una interfaz táctica de póker.<br>
+    No es un juego — es una operación.
+  </p>
+
+  <div class="hero-cta-group">
+    <a href="https://github.com/igomezp2526/Decker/blob/main/Decker/out/artifacts/Decker_jar/Decker.jar" target="_blank" class="btn-neon btn-neon-lg" id="access" aria-label="Iniciar secuencia de acceso">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      INICIAR SECUENCIA
+    </a>
+    <a href="#mecanicas" class="btn-neon-outline">
+      VER MECÁNICAS
+    </a>
+  </div>
+
+  <div class="hero-stats" role="group" aria-label="Estadísticas del juego">
+    <div class="hero-stat">
+      <span class="hero-stat-number">∞</span>
+      <div class="hero-stat-label">COMBINACIONES</div>
+    </div>
+    <div class="hero-stat">
+      <span class="hero-stat-number">52</span>
+      <div class="hero-stat-label">CARTAS BASE</div>
+    </div>
+    <div class="hero-stat">
+      <span class="hero-stat-number">148</span>
+      <div class="hero-stat-label">MODIFICADORES</div>
+    </div>
+    <div class="hero-stat">
+      <span class="hero-stat-number">×256</span>
+      <div class="hero-stat-label">MULT. MÁX.</div>
+    </div>
+  </div>
+
+  <div class="scroll-indicator" aria-hidden="true">
+    <div class="scroll-arrow"></div>
+    DESPLAZAR
+  </div>
+</section>
+
+
+<!-- =============================================
+     MECÁNICAS ESTRATÉGICAS
+     ============================================= -->
+<section class="section" id="mecanicas" aria-label="Mecánicas de juego">
+  <div class="section-inner">
+
+    <div class="section-header"
+         uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 100">
+      <div class="label-tag">// PROTOCOLO DE ANÁLISIS</div>
+      <h2 class="section-title" style="margin-top:16px;">ARQUITECTURA DEL SISTEMA</h2>
+      <p class="section-desc">
+        Tres capas de complejidad táctica. Una sola interfaz.
+        Domina cada vector de ataque para escalar tu multiplicador.
+      </p>
+      <div class="sep-line"></div>
+    </div>
+
+    <div class="mechs-grid">
+
+      <!-- Card 1: Interfaz Familiar -->
+      <div class="mech-card"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 150"
+           role="article"
+           aria-label="Mecánica: Interfaz Familiar">
+        <div class="mech-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" stroke="#00FFFF" stroke-width="1.5"/><line x1="7" y1="9" x2="12" y2="9" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="12" x2="17" y2="12" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="15" x2="14" y2="15" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <h3 class="mech-card-title">INTERFAZ FAMILIAR</h3>
+        <p class="mech-card-desc">
+          El póker como vector de entrada. Si ya conoces las manos, conoces el lenguaje.
+          Pares, escaleras, flushes — la sintaxis que ya tienes instalada.
+          Decker la usa como puerta de acceso al sistema real.
+        </p>
+        <span class="mech-card-tag txt-muted">MÓDULO: entrada_táctica.exe</span>
+      </div>
+
+      <!-- Card 2: Jokers / Modificadores (FEATURED) -->
+      <div class="mech-card featured"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 250"
+           role="article"
+           aria-label="Mecánica: Jokers y modificadores exponenciales">
+        <div class="mech-icon magenta" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="#FF00FF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="label-tag magenta" style="margin-bottom:12px; font-size:9px;">NÚCLEO DEL SISTEMA</div>
+        <h3 class="mech-card-title" style="color: var(--magenta);">JOKERS &amp; MODIFICADORES</h3>
+        <p class="mech-card-desc">
+          El motor de escalado exponencial. Cada Joker es un multiplicador
+          en cadena — <span style="color:var(--magenta);">×2, ×4, ×8</span> hasta cifras que rompen la curva.
+          Combínalos en la secuencia correcta y el sistema colapsa a tu favor.
+        </p>
+        <span class="mech-card-tag" style="color:var(--magenta); border-color:rgba(255,0,255,0.15);">MÓDULO: joker_cascade.dll</span>
+      </div>
+
+      <!-- Card 3: Roguelike Run -->
+      <div class="mech-card"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 350"
+           role="article"
+           aria-label="Mecánica: Roguelike - cada partida es única">
+        <div class="mech-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 2H3v6l9 4 9-4V2z" stroke="#00FFFF" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 8v10a2 2 0 002 2h14a2 2 0 002-2V8" stroke="#00FFFF" stroke-width="1.5"/><line x1="12" y1="12" x2="12" y2="20" stroke="#00FFFF" stroke-width="1.5"/></svg>
+        </div>
+        <h3 class="mech-card-title">ROGUELIKE CORE</h3>
+        <p class="mech-card-desc">
+          Cada run es irrepetible. Las cartas, los Jokers disponibles y los eventos
+          se generan proceduralmente. No hay memoria entre sesiones — solo habilidad pura
+          y lecturas correctas del estado del tablero.
+        </p>
+        <span class="mech-card-tag txt-muted">MÓDULO: run_generator.sys</span>
+      </div>
+
+      <!-- Card 4: Economía Táctica -->
+      <div class="mech-card"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 200"
+           role="article"
+           aria-label="Mecánica: Economía táctica">
+        <div class="mech-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00FFFF" stroke-width="1.5"/><path d="M12 7v1m0 8v1M9.5 9.5a2.5 2.5 0 014.5 1.5c0 2-4 2-4 4a2.5 2.5 0 004.5 1.5" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <h3 class="mech-card-title">ECONOMÍA TÁCTICA</h3>
+        <p class="mech-card-desc">
+          Chips como moneda de decisión. Cada mano jugada genera capital
+          que reinviertes en el mazo — comprar cartas, vender jokers,
+          reconfigurar el build. Cada crédito invertido cambia el vector de ataque.
+        </p>
+        <span class="mech-card-tag txt-muted">MÓDULO: economy_engine.bin</span>
+      </div>
+
+      <!-- Card 5: Deck Building -->
+      <div class="mech-card"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 300"
+           role="article"
+           aria-label="Mecánica: Construcción del mazo">
+        <div class="mech-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="14" height="18" rx="2" stroke="#00FFFF" stroke-width="1.5"/><rect x="7" y="1" width="14" height="18" rx="2" stroke="#00FFFF" stroke-width="1" opacity="0.5"/><line x1="7" y1="9" x2="13" y2="9" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="12" x2="11" y2="12" stroke="#00FFFF" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <h3 class="mech-card-title">DECK CRAFTING</h3>
+        <p class="mech-card-desc">
+          Tu mazo es tu arma. Afila, elimina ruido, maximiza densidad de valor.
+          Un mazo de 52 cartas bien construido supera a cualquier mano de azar.
+          La ingeniería del mazo es la mitad de la estrategia.
+        </p>
+        <span class="mech-card-tag txt-muted">MÓDULO: deck_architect.cfg</span>
+      </div>
+
+      <!-- Card 6: Blind System -->
+      <div class="mech-card"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 400"
+           role="article"
+           aria-label="Mecánica: Sistema de blinds y escalado">
+        <div class="mech-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" stroke="#00FFFF" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke="#00FFFF" stroke-width="1.5"/></svg>
+        </div>
+        <h3 class="mech-card-title">SISTEMA BLIND</h3>
+        <p class="mech-card-desc">
+          Objetivos de puntuación crecientes con cada nivel: Small Blind,
+          Big Blind, The Boss. Cada ronda eleva el umbral —
+          escalar tu multiplicador no es opcional. Es supervivencia.
+        </p>
+        <span class="mech-card-tag txt-muted">MÓDULO: blind_scaler.proc</span>
+      </div>
+
+    </div>
+
+    <!-- Perfiles de Personaje -->
+    <div uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 100">
+      <div class="section-header" style="margin-top:72px; margin-bottom:32px;">
+        <div class="label-tag">// SELECCIÓN DE OPERATIVO</div>
+        <h2 class="section-title" style="margin-top:16px;">PERFILES DE PERSONAJE</h2>
+        <p class="section-desc">Dos filosofías de juego. Un solo sistema que dominar.</p>
+        <div class="sep-line"></div>
+      </div>
+    </div>
+
+    <div class="profiles-grid">
+
+      <!-- El Calculador -->
+      <div class="profile-card"
+           data-code="01"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 200"
+           role="article"
+           aria-label="Perfil: El Calculador">
+        <div class="profile-name">EL CALCULADOR</div>
+        <div class="profile-code">// OPERATIVO: ARCHETYPE-01 / PRECISION_CLASS</div>
+        <p class="profile-desc">
+          Análisis estadístico puro. Cada decisión es una ecuación.
+          Construye mazos de alta densidad, elimina la varianza,
+          maximiza el valor esperado de cada mano. Lento. Metódico. Imparable.
+        </p>
+        <div class="profile-stats" role="group" aria-label="Estadísticas del Calculador">
+          <div class="profile-stat">
+            <span class="profile-stat-val">94</span>
+            <span class="profile-stat-key">PRECISIÓN</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">×18</span>
+            <span class="profile-stat-key">MULT. AVG</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">12</span>
+            <span class="profile-stat-key">JOKERS</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">↗ EST</span>
+            <span class="profile-stat-key">RIESGO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- El Arriesgado -->
+      <div class="profile-card right"
+           data-code="02"
+           uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 300"
+           role="article"
+           aria-label="Perfil: El Arriesgado">
+        <div class="profile-name">EL ARRIESGADO</div>
+        <div class="profile-code">// OPERATIVO: ARCHETYPE-02 / CHAOS_CLASS</div>
+        <p class="profile-desc">
+          El sistema es un juego de probabilidades — y tú sabes cómo cargarlo.
+          Builds de alto riesgo, multiplicadores absurdos, combos imposibles.
+          Una jugada puede destruirte. La siguiente puede romper el tablero.
+        </p>
+        <div class="profile-stats" role="group" aria-label="Estadísticas del Arriesgado">
+          <div class="profile-stat">
+            <span class="profile-stat-val">61</span>
+            <span class="profile-stat-key">PRECISIÓN</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">×128</span>
+            <span class="profile-stat-key">MULT. MAX</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">∞</span>
+            <span class="profile-stat-key">JOKERS</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-val">↑↑ EXT</span>
+            <span class="profile-stat-key">RIESGO</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- =============================================
+     RANKING GLOBAL
+     ============================================= -->
+<section class="section ranking-section" id="ranking" aria-label="Ranking global de jugadores">
+  <div class="section-inner">
+
+    <div class="section-header"
+         uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 100">
+      <div class="label-tag">// VALIDACIÓN SOCIAL — BASE DE DATOS GLOBAL</div>
+      <h2 class="section-title" style="margin-top:16px;">TOP DECRYPTORS</h2>
+      <p class="section-desc">
+        Los operativos que han llevado el sistema al límite.
+        Datos en tiempo real extraídos del servidor central.
+      </p>
+      <div class="sep-line"></div>
+    </div>
+
+    <div uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 200">
+      <!-- Terminal chrome -->
+      <div class="terminal-header" role="presentation">
+        <div class="terminal-dot td-red"  aria-hidden="true"></div>
+        <div class="terminal-dot td-yellow" aria-hidden="true"></div>
+        <div class="terminal-dot td-green" aria-hidden="true"></div>
+        <span style="margin-left:8px; color:var(--text-muted);">root@decker-srv: ~$ SELECT * FROM decryptors ORDER BY score DESC LIMIT 10;</span>
+        <span class="terminal-title">LIVE_FEED<span class="terminal-blink" aria-hidden="true"></span></span>
+      </div>
+
+      <div class="terminal-body">
+        <div style="overflow-x:auto;" role="region" aria-label="Tabla de clasificación">
+          <table class="rank-table" aria-describedby="ranking-desc">
+            <caption id="ranking-desc" class="uk-hidden">Clasificación de los mejores jugadores de Decker, ordenados por puntuación</caption>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">HANDLE</th>
+                <th scope="col">SCORE</th>
+                <th scope="col" class="hide-sm">ARQUETIPO</th>
+                <th scope="col" class="hide-sm">RACHA</th>
+                <th scope="col">ANTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rank-pos gold" aria-label="Posición 1">01</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>N3BULOSA</td>
+                <td class="rank-score">9,847,332</td>
+                <td class="hide-sm"><span class="rank-badge deck">DECK_MASTER</span></td>
+                <td class="rank-streak hide-sm">🔥 &nbsp;47 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 8</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos silver" aria-label="Posición 2">02</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>QUANTUMK</td>
+                <td class="rank-score">7,203,500</td>
+                <td class="hide-sm"><span class="rank-badge rogue">CHAOS_RUN</span></td>
+                <td class="rank-streak hide-sm">🔥 &nbsp;31 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 7</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos bronze" aria-label="Posición 3">03</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>SOMBRA_X</td>
+                <td class="rank-score">6,118,200</td>
+                <td class="hide-sm"><span class="rank-badge ghost">GHOST_CALC</span></td>
+                <td class="rank-streak hide-sm">⚡ &nbsp;22 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 7</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 4">04</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>V3CT0R_NULL</td>
+                <td class="rank-score">5,490,780</td>
+                <td class="hide-sm"><span class="rank-badge deck">DECK_MASTER</span></td>
+                <td class="rank-streak hide-sm">⚡ &nbsp;18 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 6</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 5">05</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>CYPH3R_K1</td>
+                <td class="rank-score">4,820,050</td>
+                <td class="hide-sm"><span class="rank-badge rogue">CHAOS_RUN</span></td>
+                <td class="rank-streak hide-sm">💀 &nbsp;9 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 6</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 6">06</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>ARKH4NG3L</td>
+                <td class="rank-score">4,207,900</td>
+                <td class="hide-sm"><span class="rank-badge ghost">GHOST_CALC</span></td>
+                <td class="rank-streak hide-sm">💀 &nbsp;7 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 5</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 7">07</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>PR1SM_77</td>
+                <td class="rank-score">3,955,200</td>
+                <td class="hide-sm"><span class="rank-badge deck">DECK_MASTER</span></td>
+                <td class="rank-streak hide-sm">⚡ &nbsp;14 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 5</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 8">08</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>NULL_BYTE</td>
+                <td class="rank-score">3,622,100</td>
+                <td class="hide-sm"><span class="rank-badge rogue">CHAOS_RUN</span></td>
+                <td class="rank-streak hide-sm">💀 &nbsp;4 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 5</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 9">09</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>DECIM4L</td>
+                <td class="rank-score">3,100,800</td>
+                <td class="hide-sm"><span class="rank-badge ghost">GHOST_CALC</span></td>
+                <td class="rank-streak hide-sm">⚡ &nbsp;11 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 4</span></td>
+              </tr>
+              <tr>
+                <td class="rank-pos other" aria-label="Posición 10">10</td>
+                <td class="rank-handle"><span class="prefix" aria-hidden="true">0x</span>GLYPH_OS</td>
+                <td class="rank-score">2,877,400</td>
+                <td class="hide-sm"><span class="rank-badge deck">DECK_MASTER</span></td>
+                <td class="rank-streak hide-sm">💀 &nbsp;3 runs</td>
+                <td><span style="color:var(--text-muted); font-size:12px;">ANTE 4</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer of terminal -->
+        <div style="padding:14px 20px; background:rgba(0,255,255,0.03); border-top:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <span style="font-size:11px; color:var(--text-muted); letter-spacing:0.1em;">
+            10 de 2,847 registros — actualización: <span style="color:var(--cyan);">LIVE</span>
+          </span>
+          <span style="font-size:11px; color:var(--text-muted); letter-spacing:0.08em; font-family:var(--font-body);">
+            Query completada en <span style="color:var(--cyan);">0.003s</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- =============================================
+     URGENCIA / ESCASEZ
+     ============================================= -->
+<section class="urgency-section" id="alpha" aria-label="Acceso Alpha limitado">
+  <div class="urgency-banner"
+       uk-scrollspy="cls: uk-animation-slide-bottom-small; delay: 100"
+       role="complementary"
+       aria-label="Oferta limitada de acceso Alpha">
+
+    <div class="urgency-grid">
+      <div>
+        <div class="label-tag magenta" style="margin-bottom:16px;">// ALERTA DE SISTEMA — VENTANA DE ACCESO CRÍTICA</div>
+        <h2 class="urgency-title">VERSIÓN ALPHA — ACCESO LIMITADO</h2>
+        <p class="urgency-sub">
+          Solo <strong style="color:var(--magenta);">127 slots restantes</strong> de los 500 originales.
+          Los operativos Alpha moldean el meta, reportan exploits y definen
+          el equilibrio antes del lanzamiento. Esta ventana se cierra sin aviso.
+        </p>
+
+        <div class="counter-block" role="timer" aria-label="Tiempo restante para el cierre de acceso Alpha">
+          <div class="counter-unit">
+            <span class="counter-num" id="cnt-days">04</span>
+            <span class="counter-label">DÍAS</span>
+          </div>
+          <div class="counter-sep" aria-hidden="true">:</div>
+          <div class="counter-unit">
+            <span class="counter-num" id="cnt-hours">17</span>
+            <span class="counter-label">HORAS</span>
+          </div>
+          <div class="counter-sep" aria-hidden="true">:</div>
+          <div class="counter-unit">
+            <span class="counter-num" id="cnt-mins">42</span>
+            <span class="counter-label">MIN</span>
+          </div>
+          <div class="counter-sep" aria-hidden="true">:</div>
+          <div class="counter-unit">
+            <span class="counter-num" id="cnt-secs">09</span>
+            <span class="counter-label">SEG</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="urgency-cta">
+        <a href="https://github.com/igomezp2526/Decker/blob/main/Decker/out/artifacts/Decker_jar/Decker.jar" target="_blank" class="btn-neon" style="background:var(--magenta); border-color:var(--magenta); box-shadow:var(--magenta-glow); min-height:52px; padding:0 32px;" aria-label="Solicitar acceso Alpha ahora">
+          SOLICITAR ACCESO ALPHA
+        </a>
+        <div class="urgency-slots">
+          <strong>127</strong> slots restantes de 500
+          <div class="progress-bar-wrap" role="progressbar" aria-valuenow="73" aria-valuemin="0" aria-valuemax="100" aria-label="73% de slots ocupados">
+            <div class="progress-bar-fill"></div>
+          </div>
+          <div style="font-size:10px; margin-top:4px; letter-spacing:0.08em;">73% CAPACIDAD OCUPADA</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- =============================================
+     FOOTER
+     ============================================= -->
+<footer class="dkr-footer" role="contentinfo">
+  <div class="footer-inner">
+    <div>
+      <span class="dkr-logo-text" style="font-size:16px;">DECKER</span>
+      <div style="font-size:10px; color:var(--text-muted); margin-top:4px; letter-spacing:0.12em; text-transform:uppercase;">
+        Tactical Operations Unit — v0.1-alpha
+      </div>
+    </div>
+
+    <nav class="footer-links" aria-label="Navegación de pie de página">
+      <a href="#">Política de Privacidad</a>
+      <a href="#">Términos de Uso</a>
+      <a href="#">Contacto</a>
+      <a href="#">Press Kit</a>
+    </nav>
+
+    <div class="footer-copy">
+      © 2025 <span>DECKER</span> — Todos los derechos reservados.
+      <br>No es un juego. Es una operación táctica.
+    </div>
+  </div>
+</footer>
+
+
+<!-- =============================================
+     SCRIPTS
+     ============================================= -->
+<script>
+  /* ---- Countdown Timer ---- */
+  (function() {
+    var deadline = new Date();
+    deadline.setDate(deadline.getDate() + 4);
+    deadline.setHours(deadline.getHours() + 17);
+    deadline.setMinutes(deadline.getMinutes() + 42);
+    deadline.setSeconds(deadline.getSeconds() + 9);
+
+    function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+    function tick() {
+      var now  = new Date();
+      var diff = Math.max(0, Math.floor((deadline - now) / 1000));
+      var d = Math.floor(diff / 86400);
+      var h = Math.floor((diff % 86400) / 3600);
+      var m = Math.floor((diff % 3600) / 60);
+      var s = diff % 60;
+      document.getElementById('cnt-days').textContent  = pad(d);
+      document.getElementById('cnt-hours').textContent = pad(h);
+      document.getElementById('cnt-mins').textContent  = pad(m);
+      document.getElementById('cnt-secs').textContent  = pad(s);
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  /* ---- Smooth scroll for anchor links ---- */
+  document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  /* ---- Navbar transparency on scroll ---- */
+  var nav = document.querySelector('.dkr-nav');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 40) {
+      nav.style.borderBottomColor = 'rgba(0,255,255,0.2)';
+    } else {
+      nav.style.borderBottomColor = 'rgba(0,255,255,0.12)';
+    }
+  }, { passive: true });
+
+  /* ---- Mech card data-scan effect: reset after hover ---- */
+  document.querySelectorAll('.mech-card').forEach(function(card) {
+    card.addEventListener('mouseleave', function() {
+      this.style.transition = 'border-color 0.2s, box-shadow 0.2s, transform 0.2s';
+    });
+  });
+</script>
+
+</div>
+
+<!-- =============================================
+     ACCESSIBILITY WIDGET
+     ============================================= -->
+<style>
+  /* ---- Floating trigger button ---- */
+  #a11y-trigger {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    width: 3.714rem;
+    height: 3.714rem;
+    border-radius: 50%;
+    background: #1A1A1A;
+    border: 2px solid #00FFFF;
+    box-shadow: 0 0 0.714rem rgba(0,255,255,0.5), 0 0.286rem 1.429rem rgba(0,0,0,0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+    outline: none;
+  }
+  #a11y-trigger:hover, #a11y-trigger:focus-visible {
+    box-shadow: 0 0 1.286rem rgba(0,255,255,0.9), 0 0.286rem 1.714rem rgba(0,0,0,0.8);
+    transform: scale(1.07);
+    border-color: #00FFFF;
+  }
+  #a11y-trigger:focus-visible { outline: 3px solid #00FFFF; outline-offset: 3px; }
+  #a11y-trigger svg { pointer-events: none; }
+
+  /* Tooltip */
+  #a11y-trigger::before {
+    content: 'Accesibilidad';
+    position: absolute;
+    right: 4.286rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1A1A1A;
+    color: #E8F4F4;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.786rem;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    padding: 0.429rem 0.857rem;
+    border-radius: 0.286rem;
+    border: 1px solid rgba(0,255,255,0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #a11y-trigger:hover::before { opacity: 1; }
+
+  /* ---- Panel ---- */
+  #a11y-panel {
+    position: fixed;
+    bottom: 6.429rem;
+    right: 2rem;
+    z-index: 10001;
+    width: min(360px, calc(100vw - 2.286rem));
+    max-height: min(82vh, 47.143rem);
+    background: #0F0F0F;
+    border: 1px solid rgba(0,255,255,0.28);
+    border-radius: 0.571rem;
+    box-shadow: 0 0 0 1px rgba(0,255,255,0.06), 0 1.714rem 4.286rem rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(0.857rem) scale(0.97);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.22s;
+  }
+  #a11y-panel.a11y-open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Panel header */
+  .a11y-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.286rem 0.857rem;
+    border-bottom: 1px solid rgba(0,255,255,0.12);
+    background: rgba(0,255,255,0.04);
+    flex-shrink: 0;
+  }
+  .a11y-head-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.857rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #00FFFF;
+    display: flex;
+    align-items: center;
+    gap: 0.571rem;
+  }
+  .a11y-close-btn {
+    width: 2.286rem; height: 2.286rem;
+    border-radius: 0.286rem;
+    background: transparent;
+    border: 1px solid rgba(0,255,255,0.15);
+    color: #8AACAC;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    font-size: 1.143rem; line-height: 1;
+  }
+  .a11y-close-btn:hover { background: rgba(0,255,255,0.1); color: #00FFFF; }
+  .a11y-close-btn:focus-visible { outline: 2px solid #00FFFF; outline-offset: 2px; }
+
+  /* Reset bar */
+  .a11y-reset-bar {
+    padding: 0.571rem 1.286rem;
+    border-bottom: 1px solid rgba(0,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .a11y-status-text {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.714rem;
+    letter-spacing: 0.1em;
+    color: #4A6A6A;
+  }
+  .a11y-status-text.has-active { color: #00CCCC; }
+  .a11y-reset-btn {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.714rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8AACAC;
+    background: transparent;
+    border: 1px solid rgba(0,255,255,0.15);
+    border-radius: 3px;
+    padding: 0.286rem 0.714rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .a11y-reset-btn:hover { background: rgba(255,0,0,0.1); color: #FF6666; border-color: rgba(255,0,0,0.3); }
+
+  /* Scroll area */
+  .a11y-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 0 0.571rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,255,255,0.2) transparent;
+  }
+  .a11y-body::-webkit-scrollbar { width: 0.286rem; }
+  .a11y-body::-webkit-scrollbar-thumb { background: rgba(0,255,255,0.2); border-radius: 2px; }
+
+  /* Category */
+  .a11y-cat {
+    padding: 0.857rem 1.286rem 0.429rem;
+  }
+  .a11y-cat-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.643rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #4A6A6A;
+    margin-bottom: 0.571rem;
+    display: flex;
+    align-items: center;
+    gap: 0.571rem;
+  }
+  .a11y-cat-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(0,255,255,0.07);
+  }
+
+  /* Toggle row */
+  .a11y-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.857rem;
+    padding: 0.571rem 1.286rem;
+    border-radius: 0.286rem;
+    transition: background 0.15s;
+  }
+  .a11y-row:hover { background: rgba(0,255,255,0.04); }
+
+  .a11y-row-info { flex: 1; min-width: 0; }
+  .a11y-row-name {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.857rem;
+    font-weight: 500;
+    color: #E8F4F4;
+    display: block;
+  }
+  .a11y-row-desc {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.714rem;
+    color: #4A6A6A;
+    display: block;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  /* Toggle switch */
+  .a11y-toggle {
+    position: relative;
+    width: 2.857rem;
+    height: 1.571rem;
+    flex-shrink: 0;
+  }
+  .a11y-toggle input {
+    opacity: 0;
+    width: 0; height: 0;
+    position: absolute;
+  }
+  .a11y-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #1E2A2A;
+    border: 1px solid rgba(0,255,255,0.18);
+    border-radius: 0.786rem;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: pointer;
+  }
+  .a11y-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 1rem; height: 1rem;
+    background: #4A6A6A;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .a11y-toggle input:checked + .a11y-toggle-track {
+    background: rgba(0,255,255,0.15);
+    border-color: #00FFFF;
+  }
+  .a11y-toggle input:checked + .a11y-toggle-track::after {
+    transform: translateX(1.286rem);
+    background: #00FFFF;
+  }
+  .a11y-toggle input:focus-visible + .a11y-toggle-track {
+    outline: 2px solid #00FFFF;
+    outline-offset: 2px;
+  }
+
+  /* Stepper (font size, spacing) */
+  .a11y-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.286rem;
+    flex-shrink: 0;
+  }
+  .a11y-step-btn {
+    width: 2rem; height: 2rem;
+    border-radius: 0.286rem;
+    background: transparent;
+    border: 1px solid rgba(0,255,255,0.18);
+    color: #8AACAC;
+    font-size: 1.143rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    font-family: monospace;
+  }
+  .a11y-step-btn:hover { background: rgba(0,255,255,0.1); color: #00FFFF; }
+  .a11y-step-btn:focus-visible { outline: 2px solid #00FFFF; outline-offset: 2px; }
+  .a11y-step-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.857rem;
+    font-weight: 700;
+    color: #00FFFF;
+    min-width: 2.571rem;
+    text-align: center;
+  }
+
+  /* Color scheme selector */
+  .a11y-scheme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.429rem;
+    padding: 0 1.286rem 0.286rem;
+  }
+  .a11y-scheme-btn {
+    padding: 0.571rem 0.429rem;
+    border-radius: 0.286rem;
+    border: 1px solid rgba(0,255,255,0.15);
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+    font-family: 'Roboto Mono', monospace;
+  }
+  .a11y-scheme-btn:hover { background: rgba(0,255,255,0.06); border-color: rgba(0,255,255,0.3); }
+  .a11y-scheme-btn:focus-visible { outline: 2px solid #00FFFF; outline-offset: 2px; }
+  .a11y-scheme-btn.active {
+    border-color: #00FFFF;
+    background: rgba(0,255,255,0.1);
+  }
+  .a11y-scheme-btn.active.high-c { border-color: #FFFF00; background: rgba(255,255,0,0.1); }
+  .a11y-scheme-btn.active.mono-c { border-color: #FFFFFF; background: rgba(255,255,255,0.08); }
+  .a11y-scheme-btn.active.dark-c { border-color: #888; background: rgba(255,255,255,0.05); }
+  .a11y-scheme-btn.active.invert-c { border-color: #FF00FF; background: rgba(255,0,255,0.1); }
+  .a11y-scheme-swatch {
+    display: block;
+    width: 1.714rem; height: 1.714rem;
+    border-radius: 50%;
+    margin: 0 auto 0.429rem;
+    border: 2px solid rgba(255,255,255,0.12);
+  }
+  .a11y-scheme-name {
+    font-size: 0.714rem;
+    letter-spacing: 0.06em;
+    color: #8AACAC;
+    display: block;
+    text-transform: uppercase;
+  }
+
+  /* =====================================================
+     GLOBAL ACCESSIBILITY CSS STATES on <html>
+     ===================================================== */
+
+  /* --- Font sizes --- */
+  html.a11y-text-sm  { font-size: 0.857rem !important; }
+  html.a11y-text-md  { font-size: 1rem !important; }
+  html.a11y-text-lg  { font-size: 1.214rem !important; }
+  html.a11y-text-xl  { font-size: 1.429rem !important; }
+  html.a11y-text-xxl { font-size: 1.714rem !important; }
+  /* Zoom proporcional para escalar toda la página */
+  html.a11y-text-sm  #site-wrapper { zoom: 0.857 !important; }
+  html.a11y-text-md  #site-wrapper { zoom: 1.0 !important; }
+  html.a11y-text-lg  #site-wrapper { zoom: 1.214 !important; }
+  html.a11y-text-xl  #site-wrapper { zoom: 1.429 !important; }
+  html.a11y-text-xxl #site-wrapper { zoom: 1.714 !important; }
+
+
+  /* --- Line height --- */
+  html.a11y-lh-sm  * { line-height: 1.3 !important; }
+  html.a11y-lh-md  * { line-height: 1.7 !important; }
+  html.a11y-lh-lg  * { line-height: 2.1 !important; }
+  html.a11y-lh-xl  * { line-height: 2.6 !important; }
+
+  /* --- Letter spacing --- */
+  html.a11y-ls-sm  * { letter-spacing: 0 !important; }
+  html.a11y-ls-md  * { letter-spacing: 0.03em !important; }
+  html.a11y-ls-lg  * { letter-spacing: 0.08em !important; }
+  html.a11y-ls-xl  * { letter-spacing: 0.14em !important; }
+
+  /* --- Word spacing --- */
+  html.a11y-ws-on * { word-spacing: 0.25em !important; }
+
+  /* --- Dyslexia font --- */
+  @font-face {
+    font-family: 'OpenDyslexic';
+    src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Regular.otf');
+  }
+  html.a11y-dyslexia * {
+    font-family: 'OpenDyslexic', sans-serif !important;
+    letter-spacing: 0.07em !important;
+  }
+
+  /* --- High Contrast --- */
+  html.a11y-contrast-high #site-wrapper {
+    background: #000000 !important;
+    color: #FFFF00 !important;
+  }
+  html.a11y-contrast-high #site-wrapper * {
+    background-color: transparent !important;
+    color: #FFFF00 !important;
+    border-color: #FFFF00 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  html.a11y-contrast-high #site-wrapper a,
+  html.a11y-contrast-high #site-wrapper button { color: #00FFFF !important; text-decoration: underline !important; }
+  html.a11y-contrast-high #site-wrapper .btn-neon,
+  html.a11y-contrast-high #site-wrapper .btn-neon-outline {
+    background: #FFFF00 !important;
+    color: #000 !important;
+    border: 2px solid #FFFF00 !important;
+  }
+  html.a11y-contrast-high #site-wrapper .dkr-nav { background: #000 !important; }
+
+  /* --- Grayscale --- */
+  html.a11y-grayscale #site-wrapper { filter: grayscale(100%) !important; }
+
+  /* --- Invert --- */
+  html.a11y-invert #site-wrapper { filter: invert(1) hue-rotate(180deg) !important; }
+
+  /* --- Dark (force) --- */
+  html.a11y-dark #site-wrapper { background: #000 !important; }
+
+  /* --- Reduce Motion --- */
+  html.a11y-reduce-motion *,
+  html.a11y-reduce-motion *::before,
+  html.a11y-reduce-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* --- Highlight Links --- */
+  html.a11y-highlight-links a {
+    background: rgba(255,255,0,0.2) !important;
+    outline: 2px solid #FFFF00 !important;
+    border-radius: 2px !important;
+    text-decoration: underline !important;
+  }
+
+  /* --- Focus visible enhanced --- */
+  html.a11y-focus-visible *:focus {
+    outline: 3px solid #00FFFF !important;
+    outline-offset: 3px !important;
+  }
+
+  /* --- Big cursor --- */
+  html.a11y-big-cursor,
+  html.a11y-big-cursor * {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M8 2 L8 32 L16 24 L22 38 L26 36 L20 22 L32 22 Z' fill='white' stroke='black' stroke-width='2'/%3E%3C/svg%3E") 8 2, auto !important;
+  }
+
+  /* --- Reading guide (crosshair line) --- */
+  #a11y-reading-guide {
+    position: fixed;
+    left: 0; right: 0;
+    height: 2.857rem;
+    background: rgba(0,255,255,0.07);
+    border-top: 1px solid rgba(0,255,255,0.35);
+    border-bottom: 1px solid rgba(0,255,255,0.35);
+    pointer-events: none;
+    z-index: 9997;
+    display: none;
+  }
+  html.a11y-reading-guide-on #a11y-reading-guide { display: block; }
+
+  /* --- Reading mask --- */
+  #a11y-mask-top,
+  #a11y-mask-bot {
+    position: fixed;
+    left: 0; right: 0;
+    background: rgba(0,0,0,0.82);
+    pointer-events: none;
+    z-index: 9996;
+    display: none;
+  }
+  html.a11y-reading-mask-on #a11y-mask-top,
+  html.a11y-reading-mask-on #a11y-mask-bot { display: block; }
+
+  /* --- Text align --- */
+  html.a11y-align-left  * { text-align: left !important; }
+  html.a11y-align-center * { text-align: center !important; }
+
+  /* --- Saturate --- */
+  html.a11y-saturate #site-wrapper { filter: saturate(2) !important; }
+  html.a11y-desaturate #site-wrapper { filter: saturate(0.3) !important; }
+
+  /* --- Pause animations --- */
+  html.a11y-pause-anim * {
+    animation-play-state: paused !important;
+  }
+
+
+
+  /* =============================================
+     RESPONSIVE UTILITIES — MOBILE FIRST
+     ============================================= */
+
+  /* Asegurar que imágenes y SVGs no rompan layout */
+  img, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Tabla scrollable en móvil */
+  .terminal-body [role="region"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hero subtitle más compacto en móvil */
+  .hero-subtitle {
+    font-family: var(--font-body);
+    font-size: clamp(12px, 3.5vw, 16px);
+    color: var(--text-secondary);
+    max-width: 560px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+    animation: fadeInDown 0.6s 0.2s ease both;
+    position: relative;
+    z-index: 1;
+    padding: 0 8px;
+  }
+  @media (min-width: 640px) {
+    .hero-subtitle { margin-bottom: 40px; padding: 0; line-height: 1.8; }
+  }
+
+  /* Mejorar espaciado de la terminal en móvil */
+  .terminal-header {
+    padding: 10px 14px;
+    font-size: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  @media (min-width: 640px) {
+    .terminal-header { padding: 12px 20px; font-size: 11px; }
+  }
+
+  /* Profile stats en móvil */
+  .profile-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  @media (min-width: 640px) {
+    .profile-stats { gap: 16px; }
+  }
+
+  .profile-stat {
+    flex: 1;
+    min-width: 70px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+    text-align: center;
+  }
+  @media (min-width: 640px) {
+    .profile-stat { min-width: 80px; padding: 10px 12px; }
+  }
+
+  .profile-stat-val {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+    display: block;
+  }
+  @media (min-width: 640px) {
+    .profile-stat-val { font-size: 18px; }
+  }
+
+  .profile-card.right .profile-stat-val { color: var(--magenta); }
+
+  .profile-stat-key {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+    display: block;
+  }
+  @media (min-width: 640px) {
+    .profile-stat-key { font-size: 9px; letter-spacing: 0.15em; }
+  }
+
+  /* Urgency CTA responsive */
+  .urgency-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+  @media (min-width: 768px) {
+    .urgency-cta { align-items: flex-end; width: auto; }
+  }
+
+  .urgency-slots {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-align: left;
+    width: 100%;
+  }
+  @media (min-width: 768px) {
+    .urgency-slots { text-align: right; width: auto; }
+  }
+
+  .urgency-slots strong {
+    color: var(--magenta);
+    font-weight: 700;
+  }
+
+  /* Progress bar responsive */
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 200px;
+    height: 4px;
+    background: rgba(255,0,255,0.15);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  /* Mech card tag responsive */
+  .mech-card-tag {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 10px;
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    .mech-card-tag { margin-top: 16px; font-size: 10px; letter-spacing: 0.15em; padding-top: 12px; }
+  }
+
+  /* Mech card title responsive */
+  .mech-card-title {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  @media (min-width: 640px) {
+    .mech-card-title { font-size: 14px; letter-spacing: 0.08em; margin-bottom: 12px; }
+  }
+
+  /* Mech card desc responsive */
+  .mech-card-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  @media (min-width: 640px) {
+    .mech-card-desc { font-size: 13px; line-height: 1.75; }
+  }
+
+  /* Profile name responsive */
+  .profile-name {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--cyan);
+    text-shadow: var(--cyan-glow-sm);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  @media (min-width: 640px) {
+    .profile-name { font-size: 18px; letter-spacing: 0.1em; }
+  }
+
+  .profile-card.right .profile-name {
+    color: var(--magenta);
+    text-shadow: 0 0 6px rgba(255,0,255,0.5);
+  }
+
+  /* Profile code responsive */
+  .profile-code {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  @media (min-width: 640px) {
+    .profile-code { font-size: 11px; letter-spacing: 0.2em; margin-bottom: 20px; }
+  }
+
+  /* Profile desc responsive */
+  .profile-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  @media (min-width: 640px) {
+    .profile-desc { font-size: 13px; line-height: 1.8; margin-bottom: 24px; }
+  }
+
+  /* Label tag responsive */
+  .label-tag {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid var(--cyan-border);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--cyan-ghost);
+  }
+  @media (min-width: 640px) {
+    .label-tag { font-size: 10px; letter-spacing: 0.18em; padding: 4px 10px; }
+  }
+
+  .label-tag.magenta {
+    color: var(--magenta);
+    border-color: var(--magenta-border);
+    background: var(--magenta-ghost);
+  }
+
+  /* Scroll indicator responsive */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    animation: float 2s ease-in-out infinite;
+  }
+  @media (min-width: 640px) {
+    .scroll-indicator { bottom: 32px; font-size: 10px; }
+  }
+
+  /* Rank score responsive */
+  .rank-score {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan) !important;
+    text-shadow: var(--cyan-glow-sm);
+  }
+  @media (min-width: 640px) {
+    .rank-score { font-size: 14px; }
+  }
+
+  /* Rank handle responsive */
+  .rank-handle {
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: var(--text-primary) !important;
+    font-size: 12px;
+  }
+  @media (min-width: 640px) {
+    .rank-handle { font-size: 13px; }
+  }
+
+  .rank-handle .prefix { color: var(--cyan); }
+
+  /* Rank pos responsive */
+  .rank-pos {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    width: 32px;
+  }
+  @media (min-width: 640px) {
+    .rank-pos { font-size: 16px; width: 40px; }
+  }
+
+  /* Rank badge responsive */
+  .rank-badge {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  @media (min-width: 640px) {
+    .rank-badge { font-size: 9px; letter-spacing: 0.1em; padding: 3px 8px; }
+  }
+
+  /* Rank streak responsive */
+  .rank-streak {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .rank-streak { font-size: 12px; }
+  }
+
+  /* Footer links responsive */
+  .footer-links {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  @media (min-width: 640px) {
+    .footer-links { gap: 24px; }
+  }
+
+  .footer-links a {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+  @media (min-width: 640px) {
+    .footer-links a { font-size: 11px; letter-spacing: 0.12em; }
+  }
+
+  .footer-links a:hover { color: var(--cyan); }
+
+  .footer-copy {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+  }
+  @media (min-width: 640px) {
+    .footer-copy { font-size: 11px; letter-spacing: 0.08em; }
+  }
+
+  .footer-copy span { color: var(--cyan); }
+
+  /* Hero CTA group responsive */
+  .hero-cta-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: fadeInDown 0.6s 0.3s ease both;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 320px;
+  }
+  @media (min-width: 480px) {
+    .hero-cta-group { flex-direction: row; justify-content: center; max-width: none; gap: 16px; }
+  }
+
+  .hero-cta-group .btn-neon,
+  .hero-cta-group .btn-neon-outline {
+    width: 100%;
+  }
+  @media (min-width: 480px) {
+    .hero-cta-group .btn-neon,
+    .hero-cta-group .btn-neon-outline { width: auto; }
+  }
+
+  /* Urgency grid responsive */
+  .urgency-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  @media (min-width: 768px) {
+    .urgency-grid { grid-template-columns: 1fr auto; gap: 32px; }
+  }
+
+  /* Urgency sub responsive */
+  .urgency-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    max-width: 480px;
+  }
+  @media (min-width: 640px) {
+    .urgency-sub { font-size: 13px; line-height: 1.7; }
+  }
+
+  /* Counter sep responsive */
+  .counter-sep {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--magenta-dim);
+    align-self: center;
+    opacity: 0.5;
+  }
+  @media (min-width: 640px) {
+    .counter-sep { font-size: 24px; }
+  }
+
+  /* Counter label responsive */
+  .counter-label {
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+  }
+  @media (min-width: 640px) {
+    .counter-label { font-size: 9px; letter-spacing: 0.18em; }
+  }
+
+  /* Section inner responsive */
+  .section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  /* Mech icon responsive */
+  .mech-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    background: var(--cyan-ghost);
+    border: 1px solid var(--cyan-border);
+    font-size: 18px;
+  }
+  @media (min-width: 640px) {
+    .mech-icon { width: 44px; height: 44px; margin-bottom: 20px; font-size: 20px; }
+  }
+
+  .mech-icon.magenta {
+    background: var(--magenta-ghost);
+    border-color: var(--magenta-border);
+  }
+
+  /* Terminal body footer responsive */
+  .terminal-body > div:last-child {
+    padding: 10px 14px;
+    gap: 6px;
+  }
+  @media (min-width: 640px) {
+    .terminal-body > div:last-child { padding: 14px 20px; gap: 8px; }
+  }
+
+  /* Logo icon responsive */
+  .dkr-logo-icon {
+    width: 32px;
+    height: 32px;
+    position: relative;
+  }
+  @media (min-width: 640px) {
+    .dkr-logo-icon { width: 36px; height: 36px; }
+  }
+
+  /* Nav button responsive */
+  .dkr-nav .btn-neon-outline {
+    min-height: 36px;
+    font-size: 9px;
+    padding: 0 12px;
+  }
+  @media (min-width: 640px) {
+    .dkr-nav .btn-neon-outline { min-height: 44px; font-size: 10px; padding: 0 18px; }
+  }
+
+  /* Hide-sm utility ya existe, verificar que funcione */
+  .hide-sm { display: none; }
+  @media (min-width: 640px) { .hide-sm { display: table-cell; } }
+
+  /* Asegurar que el body no tenga overflow */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* ---- Keep panel itself unaffected by filters ---- */
+  #a11y-trigger,
+  #a11y-panel,
+  #a11y-reading-guide,
+  #a11y-mask-top,
+  #a11y-mask-bot {
+    filter: none !important;
+  }
+  html.a11y-contrast-high #a11y-trigger,
+  html.a11y-contrast-high #a11y-panel {
+    background: #000 !important;
+    color: #FFFF00 !important;
+    border-color: #FFFF00 !important;
+  }
+  html.a11y-contrast-high .a11y-toggle-track { background: #000 !important; border-color: #FFFF00 !important; }
+  html.a11y-contrast-high .a11y-toggle input:checked + .a11y-toggle-track::after { background: #FFFF00 !important; }
+
+  /* ---- Responsive adjustments for accessibility panel ---- */
+  @media (max-width: 480px) {
+    #a11y-trigger {
+      bottom: 1.143rem;
+      right: 1.143rem;
+      width: 3.143rem;
+      height: 3.143rem;
+    }
+    #a11y-trigger::before {
+      display: none;
+    }
+    #a11y-panel {
+      right: 1.143rem;
+      bottom: 5.143rem;
+      width: calc(100vw - 2.286rem);
+      max-height: 70vh;
+    }
+    .a11y-scheme-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+</style>
+
+<!-- Reading guide + mask overlays -->
+<div id="a11y-reading-guide" aria-hidden="true"></div>
+<div id="a11y-mask-top"      aria-hidden="true"></div>
+<div id="a11y-mask-bot"      aria-hidden="true"></div>
+
+<!-- Floating trigger -->
+<button id="a11y-trigger"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="a11y-panel"
+        aria-label="Abrir panel de accesibilidad">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="5"  r="2"   stroke="#00FFFF" stroke-width="1.8"/>
+    <path d="M5 9h14M12 9v11M7 13l5-4 5 4" stroke="#00FFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8 17l4 4 4-4" stroke="#00FFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<!-- Accessibility panel -->
+<div id="a11y-panel"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Panel de accesibilidad"
+     tabindex="-1">
+
+  <div class="a11y-head">
+    <div class="a11y-head-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M5 9h14M12 9v11M7 13l5-4 5 4M8 17l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      ACCESIBILIDAD
+    </div>
+    <button class="a11y-close-btn" id="a11y-close" aria-label="Cerrar panel">✕</button>
+  </div>
+
+  <div class="a11y-reset-bar">
+    <span class="a11y-status-text" id="a11y-status">Sin cambios activos</span>
+    <button class="a11y-reset-btn" id="a11y-reset">↺ Restablecer todo</button>
+  </div>
+
+  <div class="a11y-body" id="a11y-body">
+
+    <!-- VISIÓN -->
+    <div class="a11y-cat">
+      <div class="a11y-cat-label">Visión y Color</div>
+
+      <!-- Color scheme -->
+      <div class="a11y-scheme-grid" role="group" aria-label="Esquema de color">
+        <button class="a11y-scheme-btn active" data-scheme="default" aria-pressed="true">
+          <span class="a11y-scheme-swatch" style="background:linear-gradient(135deg,#0A0A0A 50%,#00FFFF 50%);"></span>
+          <span class="a11y-scheme-name">Normal</span>
+        </button>
+        <button class="a11y-scheme-btn high-c" data-scheme="high-contrast" aria-pressed="false">
+          <span class="a11y-scheme-swatch" style="background:#000; border-color:#FFFF00;"></span>
+          <span class="a11y-scheme-name" style="color:#FFFF00;">Alto Contraste</span>
+        </button>
+        <button class="a11y-scheme-btn mono-c" data-scheme="grayscale" aria-pressed="false">
+          <span class="a11y-scheme-swatch" style="background:linear-gradient(135deg,#666 50%,#CCC 50%);"></span>
+          <span class="a11y-scheme-name">Escala de grises</span>
+        </button>
+        <button class="a11y-scheme-btn invert-c" data-scheme="invert" aria-pressed="false">
+          <span class="a11y-scheme-swatch" style="background:linear-gradient(135deg,#FFF5F5 50%,#1A0A1A 50%);"></span>
+          <span class="a11y-scheme-name">Invertir</span>
+        </button>
+        <button class="a11y-scheme-btn" data-scheme="saturate" aria-pressed="false">
+          <span class="a11y-scheme-swatch" style="background:linear-gradient(135deg,#FF0066 33%,#00FF88 66%,#0088FF 100%);"></span>
+          <span class="a11y-scheme-name">+ Saturación</span>
+        </button>
+        <button class="a11y-scheme-btn" data-scheme="desaturate" aria-pressed="false">
+          <span class="a11y-scheme-swatch" style="background:linear-gradient(135deg,#7A7A7A 50%,#AAAAAA 50%);"></span>
+          <span class="a11y-scheme-name">− Saturación</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TIPOGRAFÍA -->
+    <div class="a11y-cat">
+      <div class="a11y-cat-label">Tipografía</div>
+
+      <!-- Tamaño de texto -->
+      <div class="a11y-row" role="group" aria-label="Tamaño de texto">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Tamaño de texto</span>
+          <span class="a11y-row-desc">Ajusta el tamaño base de toda la página</span>
+        </div>
+        <div class="a11y-stepper">
+          <button class="a11y-step-btn" id="font-dec" aria-label="Reducir tamaño de texto">−</button>
+          <span class="a11y-step-val" id="font-val" aria-live="polite">100%</span>
+          <button class="a11y-step-btn" id="font-inc" aria-label="Aumentar tamaño de texto">+</button>
+        </div>
+      </div>
+
+      <!-- Interlineado -->
+      <div class="a11y-row" role="group" aria-label="Interlineado">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Interlineado</span>
+          <span class="a11y-row-desc">Espacio entre líneas de texto</span>
+        </div>
+        <div class="a11y-stepper">
+          <button class="a11y-step-btn" id="lh-dec" aria-label="Reducir interlineado">−</button>
+          <span class="a11y-step-val" id="lh-val" aria-live="polite">×1.7</span>
+          <button class="a11y-step-btn" id="lh-inc" aria-label="Aumentar interlineado">+</button>
+        </div>
+      </div>
+
+      <!-- Espaciado entre letras -->
+      <div class="a11y-row" role="group" aria-label="Espaciado entre letras">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Espaciado letras</span>
+          <span class="a11y-row-desc">Distancia entre caracteres</span>
+        </div>
+        <div class="a11y-stepper">
+          <button class="a11y-step-btn" id="ls-dec" aria-label="Reducir espaciado entre letras">−</button>
+          <span class="a11y-step-val" id="ls-val" aria-live="polite">Normal</span>
+          <button class="a11y-step-btn" id="ls-inc" aria-label="Aumentar espaciado entre letras">+</button>
+        </div>
+      </div>
+
+      <!-- Fuente dislexia -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Fuente para dislexia</span>
+          <span class="a11y-row-desc">OpenDyslexic — mayor legibilidad</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Activar fuente para dislexia">
+          <input type="checkbox" id="a11y-dyslexia">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Espaciado entre palabras -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Espaciado palabras</span>
+          <span class="a11y-row-desc">Aumenta separación entre palabras</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Activar espaciado entre palabras">
+          <input type="checkbox" id="a11y-word-spacing">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Alineación izquierda -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Alinear texto a la izquierda</span>
+          <span class="a11y-row-desc">Elimina texto centrado o justificado</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Forzar alineación izquierda">
+          <input type="checkbox" id="a11y-align-left">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- NAVEGACIÓN -->
+    <div class="a11y-cat">
+      <div class="a11y-cat-label">Navegación y Foco</div>
+
+      <!-- Resaltar enlaces -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Resaltar enlaces</span>
+          <span class="a11y-row-desc">Marca visual de todos los hipervínculos</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Resaltar todos los enlaces">
+          <input type="checkbox" id="a11y-links">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Indicador de foco -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Indicador de foco mejorado</span>
+          <span class="a11y-row-desc">Outline visible al navegar con teclado</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Mejorar indicador de foco del teclado">
+          <input type="checkbox" id="a11y-focus">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Cursor grande -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Cursor grande</span>
+          <span class="a11y-row-desc">Aumenta el tamaño del puntero</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Activar cursor grande">
+          <input type="checkbox" id="a11y-cursor">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- LECTURA -->
+    <div class="a11y-cat">
+      <div class="a11y-cat-label">Ayudas a la Lectura</div>
+
+      <!-- Guía de lectura -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Guía de lectura</span>
+          <span class="a11y-row-desc">Línea horizontal que sigue al cursor</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Activar guía de lectura">
+          <input type="checkbox" id="a11y-guide">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Máscara de lectura -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Máscara de lectura</span>
+          <span class="a11y-row-desc">Oscurece la zona fuera del foco</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Activar máscara de lectura">
+          <input type="checkbox" id="a11y-mask">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTO -->
+    <div class="a11y-cat">
+      <div class="a11y-cat-label">Movimiento y Animaciones</div>
+
+      <!-- Reducir movimiento -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Reducir movimiento</span>
+          <span class="a11y-row-desc">Minimiza animaciones y transiciones</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Reducir movimiento y animaciones">
+          <input type="checkbox" id="a11y-motion">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+
+      <!-- Pausar animaciones -->
+      <div class="a11y-row">
+        <div class="a11y-row-info">
+          <span class="a11y-row-name">Pausar animaciones</span>
+          <span class="a11y-row-desc">Detiene todos los elementos animados</span>
+        </div>
+        <label class="a11y-toggle" aria-label="Pausar todas las animaciones">
+          <input type="checkbox" id="a11y-pause">
+          <span class="a11y-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+  </div><!-- /a11y-body -->
+</div><!-- /a11y-panel -->
+
+<script>
+(function() {
+  'use strict';
+
+  /* ========== STATE ========== */
+  var DEFAULTS = {
+    fontStep: 1,       // index in fontSteps (100% = base 14px)
+    lhStep:   1,       // index in lhSteps
+    lsStep:   1,       // index in lsSteps
+    scheme:   'default',
+    dyslexia: false,
+    wordSpacing: false,
+    alignLeft: false,
+    links: false,
+    focus: false,
+    cursor: false,
+    guide: false,
+    mask: false,
+    motion: false,
+    pause: false
+  };
+
+  var fontSteps = [
+    { cls: 'a11y-text-sm',  label: '80%' },
+    { cls: 'a11y-text-md',  label: '100%' },
+    { cls: 'a11y-text-lg',  label: '120%' },
+    { cls: 'a11y-text-xl',  label: '145%' },
+    { cls: 'a11y-text-xxl', label: '175%' }
+  ];
+
+  var lhSteps = [
+    { cls: 'a11y-lh-sm', label: '×1.3' },
+    { cls: 'a11y-lh-md', label: '×1.7' },
+    { cls: 'a11y-lh-lg', label: '×2.1' },
+    { cls: 'a11y-lh-xl', label: '×2.6' }
+  ];
+
+  var lsSteps = [
+    { cls: 'a11y-ls-sm', label: 'Compacto' },
+    { cls: 'a11y-ls-md', label: 'Normal'   },
+    { cls: 'a11y-ls-lg', label: 'Amplio'   },
+    { cls: 'a11y-ls-xl', label: 'Máximo'   }
+  ];
+
+  var schemeMap = {
+    'default':       { add: [],                         remove: ['a11y-contrast-high','a11y-grayscale','a11y-invert','a11y-saturate','a11y-desaturate'] },
+    'high-contrast': { add: ['a11y-contrast-high'],     remove: ['a11y-grayscale','a11y-invert','a11y-saturate','a11y-desaturate'] },
+    'grayscale':     { add: ['a11y-grayscale'],         remove: ['a11y-contrast-high','a11y-invert','a11y-saturate','a11y-desaturate'] },
+    'invert':        { add: ['a11y-invert'],            remove: ['a11y-contrast-high','a11y-grayscale','a11y-saturate','a11y-desaturate'] },
+    'saturate':      { add: ['a11y-saturate'],          remove: ['a11y-contrast-high','a11y-grayscale','a11y-invert','a11y-desaturate'] },
+    'desaturate':    { add: ['a11y-desaturate'],        remove: ['a11y-contrast-high','a11y-grayscale','a11y-invert','a11y-saturate'] }
+  };
+
+  // Load from localStorage or use defaults
+  function loadState() {
+    try {
+      var saved = localStorage.getItem('decker_a11y');
+      if (saved) return Object.assign({}, DEFAULTS, JSON.parse(saved));
+    } catch(e) {}
+    return Object.assign({}, DEFAULTS);
+  }
+
+  function saveState(s) {
+    try { localStorage.setItem('decker_a11y', JSON.stringify(s)); } catch(e) {}
+  }
+
+  var state = loadState();
+  var html  = document.documentElement;
+
+  /* ========== DOM REFS ========== */
+  var trigger   = document.getElementById('a11y-trigger');
+  var panel     = document.getElementById('a11y-panel');
+  var closeBtn  = document.getElementById('a11y-close');
+  var resetBtn  = document.getElementById('a11y-reset');
+  var statusEl  = document.getElementById('a11y-status');
+  var guide     = document.getElementById('a11y-reading-guide');
+  var maskTop   = document.getElementById('a11y-mask-top');
+  var maskBot   = document.getElementById('a11y-mask-bot');
+
+  /* ========== APPLY STATE ========== */
+  function applyAll() {
+    // Font size
+    fontSteps.forEach(function(s, i) { html.classList.toggle(s.cls, i === state.fontStep); });
+    document.getElementById('font-val').textContent = fontSteps[state.fontStep].label;
+
+    // Line height
+    lhSteps.forEach(function(s, i) { html.classList.toggle(s.cls, i === state.lhStep); });
+    document.getElementById('lh-val').textContent = lhSteps[state.lhStep].label;
+
+    // Letter spacing
+    lsSteps.forEach(function(s, i) { html.classList.toggle(s.cls, i === state.lsStep); });
+    document.getElementById('ls-val').textContent = lsSteps[state.lsStep].label;
+
+    // Scheme
+    var sm = schemeMap[state.scheme] || schemeMap['default'];
+    sm.remove.forEach(function(c) { html.classList.remove(c); });
+    sm.add.forEach(function(c)    { html.classList.add(c); });
+    document.querySelectorAll('.a11y-scheme-btn').forEach(function(btn) {
+      var isActive = btn.dataset.scheme === state.scheme;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
+    });
+
+    // Toggles
+    html.classList.toggle('a11y-dyslexia',        state.dyslexia);
+    html.classList.toggle('a11y-ws-on',           state.wordSpacing);
+    html.classList.toggle('a11y-align-left',      state.alignLeft);
+    html.classList.toggle('a11y-highlight-links', state.links);
+    html.classList.toggle('a11y-focus-visible',   state.focus);
+    html.classList.toggle('a11y-big-cursor',      state.cursor);
+    html.classList.toggle('a11y-reading-guide-on',state.guide);
+    html.classList.toggle('a11y-reading-mask-on', state.mask);
+    html.classList.toggle('a11y-reduce-motion',   state.motion);
+    html.classList.toggle('a11y-pause-anim',      state.pause);
+
+    document.getElementById('a11y-dyslexia').checked     = state.dyslexia;
+    document.getElementById('a11y-word-spacing').checked  = state.wordSpacing;
+    document.getElementById('a11y-align-left').checked   = state.alignLeft;
+    document.getElementById('a11y-links').checked        = state.links;
+    document.getElementById('a11y-focus').checked        = state.focus;
+    document.getElementById('a11y-cursor').checked       = state.cursor;
+    document.getElementById('a11y-guide').checked        = state.guide;
+    document.getElementById('a11y-mask').checked         = state.mask;
+    document.getElementById('a11y-motion').checked       = state.motion;
+    document.getElementById('a11y-pause').checked        = state.pause;
+
+    updateStatus();
+    saveState(state);
+  }
+
+  function updateStatus() {
+    var active = 0;
+    if (state.fontStep !== 2)       active++;
+    if (state.lhStep  !== 1)        active++;
+    if (state.lsStep  !== 1)        active++;
+    if (state.scheme  !== 'default')active++;
+    if (state.dyslexia)             active++;
+    if (state.wordSpacing)          active++;
+    if (state.alignLeft)            active++;
+    if (state.links)                active++;
+    if (state.focus)                active++;
+    if (state.cursor)               active++;
+    if (state.guide)                active++;
+    if (state.mask)                 active++;
+    if (state.motion)               active++;
+    if (state.pause)                active++;
+
+    if (active === 0) {
+      statusEl.textContent = 'Sin cambios activos';
+      statusEl.classList.remove('has-active');
+    } else {
+      statusEl.textContent = active + ' ajuste' + (active > 1 ? 's' : '') + ' activo' + (active > 1 ? 's' : '');
+      statusEl.classList.add('has-active');
+    }
+
+    // Update trigger badge
+    trigger.style.borderColor = active > 0 ? '#FF00FF' : '#00FFFF';
+    trigger.style.boxShadow   = active > 0
+      ? '0 0 10px rgba(255,0,255,0.55), 0 4px 20px rgba(0,0,0,0.7)'
+      : '0 0 10px rgba(0,255,255,0.5), 0 4px 20px rgba(0,0,0,0.7)';
+  }
+
+  /* ========== PANEL OPEN/CLOSE ========== */
+  var isOpen = false;
+
+  function openPanel() {
+    isOpen = true;
+    panel.classList.add('a11y-open');
+    trigger.setAttribute('aria-expanded', 'true');
+    panel.focus();
+  }
+
+  function closePanel() {
+    isOpen = false;
+    panel.classList.remove('a11y-open');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus();
+  }
+
+  trigger.addEventListener('click', function() {
+    isOpen ? closePanel() : openPanel();
+  });
+
+  closeBtn.addEventListener('click', closePanel);
+
+  // Close on outside click
+  document.addEventListener('click', function(e) {
+    if (isOpen && !panel.contains(e.target) && e.target !== trigger) closePanel();
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isOpen) closePanel();
+  });
+
+  /* ========== CONTROLS ========== */
+
+  // Font size
+  document.getElementById('font-inc').addEventListener('click', function() {
+    state.fontStep = Math.min(state.fontStep + 1, fontSteps.length - 1);
+    applyAll();
+  });
+  document.getElementById('font-dec').addEventListener('click', function() {
+    state.fontStep = Math.max(state.fontStep - 1, 0);
+    applyAll();
+  });
+
+  // Line height
+  document.getElementById('lh-inc').addEventListener('click', function() {
+    state.lhStep = Math.min(state.lhStep + 1, lhSteps.length - 1);
+    applyAll();
+  });
+  document.getElementById('lh-dec').addEventListener('click', function() {
+    state.lhStep = Math.max(state.lhStep - 1, 0);
+    applyAll();
+  });
+
+  // Letter spacing
+  document.getElementById('ls-inc').addEventListener('click', function() {
+    state.lsStep = Math.min(state.lsStep + 1, lsSteps.length - 1);
+    applyAll();
+  });
+  document.getElementById('ls-dec').addEventListener('click', function() {
+    state.lsStep = Math.max(state.lsStep - 1, 0);
+    applyAll();
+  });
+
+  // Scheme buttons
+  document.querySelectorAll('.a11y-scheme-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      state.scheme = this.dataset.scheme;
+      applyAll();
+    });
+  });
+
+  // Toggles
+  function bindToggle(id, key) {
+    document.getElementById(id).addEventListener('change', function() {
+      state[key] = this.checked;
+      applyAll();
+    });
+  }
+  bindToggle('a11y-dyslexia',    'dyslexia');
+  bindToggle('a11y-word-spacing','wordSpacing');
+  bindToggle('a11y-align-left',  'alignLeft');
+  bindToggle('a11y-links',       'links');
+  bindToggle('a11y-focus',       'focus');
+  bindToggle('a11y-cursor',      'cursor');
+  bindToggle('a11y-guide',       'guide');
+  bindToggle('a11y-mask',        'mask');
+  bindToggle('a11y-motion',      'motion');
+  bindToggle('a11y-pause',       'pause');
+
+  // Reset
+  resetBtn.addEventListener('click', function() {
+    state = Object.assign({}, DEFAULTS);
+    applyAll();
+  });
+
+  /* ========== READING GUIDE: follow mouse ========== */
+  var MASK_HALF = 40;
+  document.addEventListener('mousemove', function(e) {
+    if (!state.guide && !state.mask) return;
+    var y = e.clientY;
+    if (state.guide) {
+      guide.style.top = (y - MASK_HALF / 2) + 'px';
+    }
+    if (state.mask) {
+      maskTop.style.top    = '0';
+      maskTop.style.height = Math.max(0, y - MASK_HALF) + 'px';
+      maskBot.style.top    = (y + MASK_HALF) + 'px';
+      maskBot.style.bottom = '0';
+      maskBot.style.height = '';
+    }
+  });
+
+  /* ========== RESPECT prefers-reduced-motion on load ========== */
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!state.motion) { state.motion = true; }
+  }
+
+  /* ========== INIT ========== */
+  applyAll();
+
+})();
+</script>
+
+</body>
+</html>
